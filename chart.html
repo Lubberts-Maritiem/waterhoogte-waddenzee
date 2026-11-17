@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waterhoogte NAP</title>
+<style>
+  :root { --bg:#fff; --fg:#1d2733; --muted:#6b7682; --line:#e2e7ed; --grid:#f0f3f6; --chip:#f2f4f7;
+    --meting:#0178ca; --verw:#b90101; --astro:#808080; --sv:#4daf4a; --sm:#0178ca; --now:#f0a400; --pri:#0178ca; }
+  .dark { --bg:#121212; --fg:#e8e8e8; --muted:#9a9a9a; --line:#333; --grid:#222; --chip:#262626;
+    --meting:#4fb0f5; --verw:#ff5a5a; --astro:#999; --sv:#6cc96a; --sm:#4fb0f5; --pri:#4fb0f5; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .app { height: 100dvh; display: flex; flex-direction: column; padding: 8px 10px 6px; }
+  .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+  .title { font-weight: 650; font-size: 15px; }
+  .title select { font: inherit; color: inherit; background: transparent; border: 0; padding: 0;
+    font-weight: 650; cursor: pointer; -webkit-appearance: none; appearance: none; text-decoration: underline dotted; }
+  .legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; }
+  .legend button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 4px 0; touch-action: manipulation; }
+  .legend button[aria-pressed=false] { opacity: .35; }
+  .legend i { width: 14px; height: 2px; background: var(--c); display: inline-block; }
+  .legend i.dash { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+  .back { margin-left: auto; font-size: 12px; color: var(--pri); text-decoration: none; padding: 4px 0; }
+  .chart { flex: 1; min-height: 160px; position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .tip { position: absolute; top: 4px; pointer-events: none; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.12); white-space: nowrap; }
+  .tip b { font-variant-numeric: tabular-nums; }
+  .tip div { display: flex; gap: 10px; justify-content: space-between; }
+  .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+  /* tijdschuif in RWsOS-stijl */
+  .ts { padding: 22px 8px 0 38px; } /* zelfde marges als de grafiek: dagen staan recht boven elkaar */
+  .track { position: relative; height: 36px; touch-action: none; cursor: pointer; }
+  .rail { position: absolute; left: 0; right: 0; top: 16px; height: 4px; background: var(--line); border-radius: 2px; }
+  .fill { position: absolute; left: 0; top: 16px; height: 4px; background: var(--pri); border-radius: 2px; }
+  .tick { position: absolute; top: 12px; width: 1px; height: 12px; background: var(--muted); opacity: .5; }
+  .tlabel { position: absolute; top: 26px; transform: translateX(-50%); font-size: 11px; color: var(--muted);
+    background: var(--chip); border-radius: 10px; padding: 1px 7px; white-space: nowrap; }
+  .thumb { position: absolute; top: 18px; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+    background: var(--pri); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .thumb::after { content: ""; position: absolute; inset: -12px; } /* groter raakvlak */
+  .tlab { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--pri); color: #fff;
+    font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+  .actions { display: flex; align-items: center; gap: 4px; margin: 14px 0 0 -30px; }
+  .actions .date { flex: 1; text-align: center; font-size: 13px; }
+  .ib { all: unset; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+    color: var(--pri); touch-action: manipulation; }
+  .ib:active { background: var(--chip); }
+  .ib svg { width: 22px; height: 22px; fill: currentColor; }
+  .ib.on { color: var(--fg); }
+  .msg { margin: auto; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="head">
+    <span class="title">Waterhoogte NAP · <select id="loc" aria-label="Locatie"></select></span>
+    <span class="legend" id="legend"></span>
+    <a class="back" id="back" href="./">← Eenvoudige weergave</a>
+  </div>
+  <div class="chart" id="chart"><div class="msg" id="msg" style="padding-top:40px;text-align:center">Laden…</div></div>
+  <div class="ts">
+    <div class="track" id="track">
+      <div class="rail"></div><div class="fill" id="fill"></div><div id="ticks"></div>
+      <div class="thumb" id="thumb" role="slider" tabindex="0" aria-label="Tijdstip"><div class="tlab" id="tlab"></div></div>
+    </div>
+    <div class="actions">
+      <button class="ib" id="follow" title="Volg huidige tijd"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z"/></svg></button>
+      <span class="date" id="date"></span>
+      <button class="ib" id="prev" title="Uur terug"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+      <button class="ib" id="play" title="Afspelen"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="ib" id="next" title="Uur vooruit"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg></button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const TZ = 'Europe/Amsterdam', STEP = 10;
+  const q = new URLSearchParams(location.search);
+  const [pdBack, pdAhead] = (q.get('pd') || '-2;7').split(';').map(Number);
+  if (q.get('theme') === 'dark' || (!q.get('theme') && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+  const $ = id => document.getElementById(id);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const fmt = (m, o) => new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, ...o }).format(new Date(m * 60000));
+  const label = m => fmt(m, { weekday: 'short', day: 'numeric', month: 'numeric' }) + ' ' + fmt(m, { hour: '2-digit', minute: '2-digit' });
+  const localHM = m => { const p = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(m * 60000));
+    return +p.find(x => x.type === 'hour').value * 60 + +p.find(x => x.type === 'minute').value; };
+  const slug = c => c.replace(/\./g, '-');
+  const SER = [
+    { k: 'meting', l: 'Meting', c: '--meting' }, { k: 'astronomisch', l: 'Astronomisch', c: '--astro' },
+    { k: 'verwachting', l: 'Verwachting RWS', c: '--verw' }, { k: 'opzet_v', l: 'Verwachte opzet', c: '--sv' },
+    { k: 'opzet_m', l: 'Meting opzet', c: '--sm', dash: true },
+  ];
+  const vis = Object.fromEntries(SER.map(s => [s.k, true]));
+  let D, LOC, S = {}, nowMin, t0, t1, cur, follow = true, playT = null;
+
+  const decode = (s) => !s ? [] : s.v.map((v, i) => v == null ? null : [D.t0 + (s.i0 + i) * D.step, v]).filter(Boolean);
+  const diff = (a, b) => { const m = new Map(b); return a.filter(p => m.has(p[0])).map(p => [p[0], p[1] - m.get(p[0])]); };
+  function at(arr, t) { if (!arr.length) return null; let lo = 0, hi = arr.length - 1;
+    while (lo < hi) { const md = (lo + hi) >> 1; if (arr[md][0] < t) lo = md + 1; else hi = md; }
+    let b = arr[lo]; if (lo && Math.abs(arr[lo - 1][0] - t) < Math.abs(b[0] - t)) b = arr[lo - 1];
+    return Math.abs(b[0] - t) <= 15 ? b[1] : null; }
+
+  function useLoc(i) {
+    LOC = D.locations[i]; $('loc').value = i;
+    S = { meting: decode(LOC.series.meting), verwachting: decode(LOC.series.verwachting), astronomisch: decode(LOC.series.astronomisch) };
+    S.opzet_v = diff(S.verwachting, S.astronomisch); S.opzet_m = diff(S.meting, S.astronomisch);
+    q.set('loc', slug(LOC.code)); history.replaceState(null, '', '?' + q.toString().replace(/%3B/g, ';'));
+    document.title = 'Waterhoogte NAP · ' + LOC.name;
+    $('back').href = './#' + slug(LOC.code);
+    render();
+  }
+
+  function render() { if (!LOC) return; drawChart(); drawSlider(); }
+
+  function drawChart() {
+    const el = $('chart'), W = el.clientWidth, H = el.clientHeight, L = 38, R = 8, T = 18, B = 20, iw = W - L - R, ih = H - T - B;
+    const x = t => L + (t - t0) / (t1 - t0) * iw;
+    let lo = Infinity, hi = -Infinity;
+    SER.forEach(s => vis[s.k] && S[s.k].forEach(p => { if (p[0] >= t0 && p[0] <= t1) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); } }));
+    if (!isFinite(lo)) { lo = -100; hi = 100; }
+    const st = hi - lo > 300 ? 100 : 50; lo = Math.floor((lo - 5) / st) * st; hi = Math.ceil((hi + 5) / st) * st;
+    const y = v => T + (hi - v) / (hi - lo) * ih, mu = css('--muted');
+    let s = `<svg viewBox="0 0 ${W} ${H}" font-size="11" font-family="system-ui,sans-serif">`;
+    for (let v = lo; v <= hi; v += st) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v ? css('--grid') : css('--line')}"/><text x="${L - 5}" y="${y(v) + 4}" text-anchor="end" fill="${mu}">${v}</text>`;
+    s += `<text x="${L - 5}" y="10" text-anchor="end" fill="${mu}">cm</text>`;
+    for (let t = t0 - localHM(t0) + 1440; t <= t1; t += 1440) { const hm = localHM(t); if (hm) t += hm > 720 ? 1440 - hm : -hm;
+      s += `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - B}" stroke="${css('--line')}"/><text x="${x(t) + 3}" y="${H - 6}" fill="${mu}">${fmt(t, { weekday: 'short', day: 'numeric' })}</text>`; }
+    s += `<line x1="${x(nowMin)}" x2="${x(nowMin)}" y1="${T}" y2="${H - B}" stroke="${css('--now')}" stroke-dasharray="4 3" stroke-width="1.5"/>`;
+    SER.forEach(sr => { if (!vis[sr.k]) return; let d = '', pv = null;
+      S[sr.k].forEach(p => { if (p[0] < t0 - STEP || p[0] > t1 + STEP) { pv = null; return; }
+        d += (pv === null || p[0] - pv > 30 ? 'M' : 'L') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); pv = p[0]; });
+      if (d) s += `<path d="${d}" fill="none" stroke="${css(sr.c)}" stroke-width="1.6"${sr.dash ? ' stroke-dasharray="4 3"' : ''}/>`; });
+    s += `<line x1="${x(cur)}" x2="${x(cur)}" y1="${T}" y2="${H - B}" stroke="${css('--fg')}" stroke-width="1"/>`;
+    const rows = [];
+    SER.forEach(sr => { if (!vis[sr.k]) return; const v = at(S[sr.k], cur); if (v == null) return;
+      s += `<circle cx="${x(cur)}" cy="${y(v)}" r="3.5" fill="${css(sr.c)}"/>`;
+      rows.push(`<div><span><i style="background:${css(sr.c)}"></i>${sr.l}</span><b>${Math.round(v)} cm</b></div>`); });
+    el.innerHTML = s + '</svg>' + (rows.length ? `<div class="tip" id="tip">${rows.join('')}</div>` : '');
+    const tip = $('tip'); if (tip) { const tw = tip.offsetWidth, px = x(cur); tip.style.left = (px + 10 + tw > W ? px - 10 - tw : px + 10) + 'px'; }
+    el._g = { L, iw };
+  }
+
+  function drawSlider() {
+    const f = (cur - t0) / (t1 - t0) * 100;
+    $('thumb').style.left = f + '%'; $('fill').style.width = f + '%';
+    $('tlab').textContent = label(cur); $('date').textContent = label(cur);
+    $('thumb').setAttribute('aria-valuetext', label(cur));
+    $('follow').classList.toggle('on', !follow);
+  }
+  function drawTicks() {
+    let h = '';
+    for (let t = t0 - localHM(t0) + 1440; t <= t1; t += 1440) { const hm = localHM(t); if (hm) t += hm > 720 ? 1440 - hm : -hm;
+      const p = (t - t0) / (t1 - t0) * 100; h += `<div class="tick" style="left:${p}%"></div>`;
+      if (p > 4 && p < 96) h += `<div class="tlabel" style="left:${p}%">${fmt(t, { day: 'numeric', month: 'numeric' })}</div>`; }
+    $('ticks').innerHTML = h;
+  }
+
+  const setCur = (t, user = true) => { if (!LOC) return; if (user) follow = false; cur = Math.min(t1, Math.max(t0, Math.round(t / STEP) * STEP)); render(); };
+
+  // Slepen: zelfde code voor tijdschuif en grafiek; pointer events werken met vinger, pen en muis.
+  function dragOn(el, toT, captureAll) {
+    let on = false;
+    el.addEventListener('pointerdown', e => { on = true; try { el.setPointerCapture(e.pointerId); } catch (_) {} stopPlay(); setCur(toT(e)); });
+    el.addEventListener('pointermove', e => on && setCur(toT(e)));
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(n => el.addEventListener(n, () => on = false));
+  }
+  dragOn($('track'), e => { const r = $('track').getBoundingClientRect(); return t0 + Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (t1 - t0); });
+  dragOn($('chart'), e => { const r = $('chart').getBoundingClientRect(), g = $('chart')._g; return t0 + Math.min(1, Math.max(0, (e.clientX - r.left - g.L) / g.iw)) * (t1 - t0); });
+  $('thumb').addEventListener('keydown', e => { if (e.key === 'ArrowLeft') setCur(cur - STEP); if (e.key === 'ArrowRight') setCur(cur + STEP); });
+
+  const stopPlay = () => { clearInterval(playT); playT = null; $('playIcon').innerHTML = '<path d="M8 5v14l11-7z"/>'; };
+  $('play').onclick = () => { if (playT) return stopPlay(); follow = false;
+    $('playIcon').innerHTML = '<path d="M6 19h4V5H6zm8-14v14h4V5z"/>';
+    playT = setInterval(() => setCur(cur >= t1 ? t0 : cur + 60), 400); };
+  $('prev').onclick = () => { stopPlay(); setCur(cur - 60); };
+  $('next').onclick = () => { stopPlay(); setCur(cur + 60); };
+  $('follow').onclick = () => { stopPlay(); follow = true; setCur(nowMin, false); };
+  $('loc').onchange = e => useLoc(+e.target.value);
+
+  function start(d) {
+    D = d; nowMin = Math.floor(Date.now() / 60000);
+    t0 = Math.floor((nowMin + pdBack * 1440) / STEP) * STEP; t1 = Math.ceil((nowMin + pdAhead * 1440) / STEP) * STEP;
+    if (follow || cur == null) cur = Math.round(nowMin / STEP) * STEP;
+    $('loc').innerHTML = D.locations.map((l, i) => `<option value="${i}">${l.name}</option>`).join('');
+    $('legend').innerHTML = SER.map(s => `<button aria-pressed="${vis[s.k]}" data-k="${s.k}"><i class="${s.dash ? 'dash' : ''}" style="--c:var(${s.c})"></i>${s.l}</button>`).join('');
+    $('legend').querySelectorAll('button').forEach(b => b.onclick = () => { vis[b.dataset.k] = !vis[b.dataset.k]; b.setAttribute('aria-pressed', vis[b.dataset.k]); drawChart(); });
+    drawTicks();
+    const want = q.get('loc');
+    const i = D.locations.findIndex(l => slug(l.code) === want || l.code === want || l.name.toLowerCase() === (want || '').toLowerCase());
+    useLoc(i >= 0 ? i : (LOC ? D.locations.findIndex(l => l.code === LOC.code) : 0));
+  }
+
+  const get = u => fetch(u, { cache: 'no-store' }).then(r => { if (!r.ok) throw 0; return r.json(); });
+  const load = () => get('api/data').catch(() => get('data.json'));
+  load().then(d => { start(d); setInterval(() => load().then(start).catch(() => {}), 10 * 60000);
+    setInterval(() => { nowMin = Math.floor(Date.now() / 60000); if (follow) cur = Math.round(nowMin / STEP) * STEP; render(); }, 60000); })
+    .catch(() => { $('msg').textContent = 'Kon de gegevens niet laden.'; });
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 100); });
+})();
+</script>
+</body>
+</html>
