@@ -110,7 +110,7 @@
 
 <script>
 (() => {
-  const TZ = 'Europe/Amsterdam', STEP = 10, BACK = 1440, AHEAD = 3 * 1440;
+  const TZ = 'Europe/Amsterdam', STEP = 10, BACK = 1440, AHEAD = 2 * 1440;
   const $ = id => document.getElementById(id);
   const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const fmt = (m, o) => new Intl.DateTimeFormat('nl-NL', { timeZone: TZ, ...o }).format(new Date(m * 60000));
@@ -257,7 +257,7 @@
     try { localStorage.setItem('wad-loc', LOCS[i].code); } catch (_) {}
     if (!fromHash && location.hash.slice(1) !== slug(LOCS[i].code)) history.replaceState(null, '', '#' + slug(LOCS[i].code));
     document.title = 'Waterhoogte ' + LOCS[i].name;
-    $('chartlink').href = 'chart?loc=' + slug(LOCS[i].code) + '&pd=-2;7';
+    $('chartlink').href = 'chart?loc=' + slug(LOCS[i].code);
     renderTides();
     show();
   }

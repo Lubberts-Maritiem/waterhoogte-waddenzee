@@ -80,7 +80,7 @@
 (() => {
   const TZ = 'Europe/Amsterdam', STEP = 10;
   const q = new URLSearchParams(location.search);
-  const [pdBack, pdAhead] = (q.get('pd') || '-2;7').split(';').map(Number);
+  const [pdBack, pdAhead] = (q.get('pd') || '-1;2').split(';').map(Number);
   if (q.get('theme') === 'dark' || (!q.get('theme') && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
   const $ = id => document.getElementById(id);
   const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
