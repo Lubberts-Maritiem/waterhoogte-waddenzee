@@ -71,7 +71,17 @@
   .loc .v { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .loc .v i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
   .hint { font-size: 13px; color: var(--muted); margin: -4px 0 8px; }
-  .altlink { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--blue); text-decoration: none; padding: 6px 0; }
+  .topbar { display: flex; align-items: center; gap: 8px; }
+  .topbar .picker { flex: 0 1 auto; min-width: 0; }
+  .topbar .picker select { width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+  .rwsbtn { margin-left: auto; display: inline-flex; align-items: center; flex: none; height: 44px; padding: 0 12px;
+    border-radius: 12px; background: var(--blue); color: #fff; font-size: 15px; font-weight: 600;
+    text-decoration: none; white-space: nowrap; touch-action: manipulation; }
+  .rwsbtn:active { opacity: .85; }
+  @media (max-width: 420px) {
+    .rwsbtn .long { display: none; }
+    .topbar .picker select { font-size: 18px; padding-right: 34px; }
+  }
   .foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
   .foot .warn { color: var(--red); font-weight: 600; }
   .foot a { color: var(--blue); }
@@ -79,7 +89,10 @@
 </head>
 <body>
 <div class="wrap">
-  <label class="picker"><select id="loc" aria-label="Kies locatie"></select></label>
+  <div class="topbar">
+    <label class="picker"><select id="loc" aria-label="Kies locatie"></select></label>
+    <a class="rwsbtn" id="chartlink" href="chart" aria-label="RWS weergave">RWS<span class="long">&nbsp;weergave</span>&nbsp;→</a>
+  </div>
   <p class="sublabel">Waterhoogte</p>
   <div class="big"><span class="val" id="val">–</span><span class="unit">cm NAP</span><span class="trend" id="trend"></span></div>
   <div class="when" id="when">Laden…</div>
@@ -95,8 +108,6 @@
     <span style="--c: var(--red)">verwachting RWS</span>
     <span class="dash" style="--c: var(--grey)">alleen getij</span>
   </div>
-
-  <a class="altlink" id="chartlink" href="chart">Grafiekweergave (zoals RWsOS) →</a>
 
   <h2>Alle locaties</h2>
   <p class="hint" id="allhint"></p>
