@@ -52,12 +52,7 @@
   .ib svg { width: 22px; height: 22px; fill: currentColor; }
   .ib.on { color: var(--fg); }
   .msg { margin: auto; color: var(--muted); }
-  .disc { font-size: 11px; color: var(--muted); margin: 2px 0 0 -30px; }
-  .disc summary { cursor: pointer; list-style: none; padding: 3px 0; }
-  .disc summary::-webkit-details-marker { display: none; }
-  .disc[open] { max-height: 40vh; overflow: auto; }
-  .disc p { margin: 4px 0; line-height: 1.45; }
-  .disc a { color: var(--pri); }
+  .disc { font-size: 11px; color: var(--muted); margin: 4px 0 0 -30px; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -80,8 +75,7 @@
       <button class="ib" id="play" title="Afspelen"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
       <button class="ib" id="next" title="Uur vooruit"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg></button>
     </div>
-    <details class="disc"><summary>Geen dienst van Rijkswaterstaat · niet bedoeld voor navigatie · <u>disclaimer</u></summary>
-      <p>Deze site is geen dienst van Rijkswaterstaat. De gegevens komen uit de openbare Waterwebservices van Rijkswaterstaat en worden zonder controle getoond. Metingen en verwachtingen zijn ruw en niet gevalideerd, en kunnen afwijken, vertraagd zijn of ontbreken. Niet bedoeld voor navigatie of veiligheidsbeslissingen. Raadpleeg daarvoor officiële bronnen zoals <a href="https://waterinfo.rws.nl" target="_blank" rel="noopener">waterinfo.rws.nl</a>. Gebruik op eigen risico.</p><p>Deze site gebruikt geen cookies en volgt je niet. </p></details>
+    <p class="disc">Geen dienst van Rijkswaterstaat. Ruwe, ongecontroleerde gegevens, niet bedoeld voor navigatie. Gebruik op eigen risico. Geen cookies.</p>
   </div>
 </div>
 <script>
@@ -207,7 +201,7 @@
   load().then(d => { start(d); setInterval(() => load().then(start).catch(() => {}), 10 * 60000);
     setInterval(() => { nowMin = Math.floor(Date.now() / 60000); if (follow) cur = Math.round(nowMin / STEP) * STEP; render(); }, 60000); })
     .catch(() => { $('msg').textContent = 'Kon de gegevens niet laden.'; });
-  // Opnieuw tekenen zodra de grafiek van formaat verandert (scherm draaien, disclaimer uitklappen).
+  // Opnieuw tekenen zodra de grafiek van formaat verandert (bijv. scherm draaien).
   let rt; const redraw = () => { clearTimeout(rt); rt = setTimeout(render, 50); };
   if ('ResizeObserver' in window) new ResizeObserver(redraw).observe($('chart')); else addEventListener('resize', redraw);
 })();
